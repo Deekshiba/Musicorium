@@ -1,0 +1,120 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const config = require('./config/database');
+
+const authRoutes = require('./routes/auth');
+const eventRoutes = require('./routes/events');
+const ticketRoutes = require('./routes/tickets');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
+
+// Connect to MongoDB
+mongoose.connect(config.database, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/tickets', ticketRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+module.exports = {
+  database: 'mongodb://localhost:27017/musicorum',
+  secret: 'your_jwt_secret' // Use a strong secret in production
+};
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['user', 'artist', 'admin'], default: 'user' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Hash password before saving
+User Schema.pre('save', async function(next) {
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
+});
+
+// Compare password
+User Schema.methods.comparePassword = function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+module.exports = mongoose.model('User ', UserSchema);
+const mongoose = require('mongoose');
+
+const EventSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: String,
+  date: { type: Date, required: true },
+  location: { type: String, required: true },
+  genre: { type: String, required: true },
+  artist: { type: mongoose.Schema.Types.ObjectId, ref: 'User ' },
+  ticketsAvailable: { type: Number, required: true },
+  ticketsTotal: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('Event', EventSchema);
+const mongoose = require('mongoose');
+
+const TicketSchema = new mongoose.Schema({
+  event: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User ', required: true },
+  seatNumber: String,
+  purchaseDate: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('Ticket', TicketSchema);
+const express = require('express');
+const router = express.Router();
+const { register, login } = require('../controllers/authController');
+
+// User registration
+router.post('/register', register);
+
+// User login
+router.post('/login', login);
+
+module.exports = router;
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const config = require('../config/database');
+
+// Register a new user
+exports.register = async (req, res) => {
+  const { username, email, password } = req.body;
+  try {
+    const newUser  = new User({ username, email, password });
+    await newUser .save();
+    res.status(201).send('User  registered successfully');
+  } catch (error)
