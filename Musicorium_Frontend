@@ -1,0 +1,161 @@
+import React, { useState, useEffect } from 'react';
+import { fetchEvents } from '../services/api';
+
+const EventList = () => {
+  const [events, setEvents] = useState([]);
+  const [filters, setFilters] = useState({
+    genre: '',
+    date: '',
+    location: ''
+  });
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      const data = await fetchEvents(filters);
+      setEvents(data);
+    };
+    loadEvents();
+  }, [filters]);
+
+  const handleFilterChange = (e) => {
+    setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+  return (
+    <div>
+      <h2>Upcoming Events</h2>
+      <div className="filters">
+        <label>
+          Genre:
+          <select name="genre" value={filters.genre} onChange={handleFilterChange}>
+            <option value="">All</option>
+            <option value="rock">Rock</option>
+            <option value="pop">Pop</option>
+            <option value="jazz">Jazz</option>
+          </select>
+        </label>
+        <label>
+          Date:
+          <input type="date" name="date" value={filters.date} onChange={handleFilterChange} />
+        </label>
+        <label>
+          Location:
+          <input type="text" name="location" value={filters.location} onChange={handleFilterChange} />
+        </label>
+      </div>
+      <ul className="event-list">
+        {events.map(event => (
+          <li key={event.id}>
+            <h3>{event.title}</h3>
+            <p>{event.date} - {event.location}</p>
+            <p>Genre: {event.genre}</p>
+            <p>Tickets: {event.ticketsAvailable} / {event.ticketsTotal}</p>
+            <button>Buy Tickets</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default EventList;
+import React, { useState } from 'react';
+
+const InteractiveSeatingChart = () => {
+  const [seats, setSeats] = useState([
+    { id: 1, row: 1, column: 1, occupied: false },
+    { id: 2, row: 1, column: 2, occupied: false },
+    { id: 3, row: 1, column: 3, occupied: false },
+    // ...
+  ]);
+
+  const handleSeatClick = (seatId) => {
+    const updatedSeats = seats.map(seat => {
+      if (seat.id === seatId) {
+        return { ...seat, occupied: !seat.occupied };
+      }
+      return seat;
+    });
+    setSeats(updatedSeats);
+  };
+
+  return (
+    <div className="seating-chart">
+      {seats.map(seat => (
+        <div key={seat.id} className={`seat ${seat.occupied ? 'occupied' : ''}`} onClick={() => handleSeatClick(seat.id)}>
+          {seat.row}-{seat.column}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default InteractiveSeatingChart;
+import React, { useState } from 'react';
+import { login, register } from '../services/auth';
+
+const UserAuth = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isLogin) {
+      await login(username, password);
+    } else {
+      await register(username, password);
+    }
+  };
+
+  return (
+    <div>
+      <h2>{isLogin ? 'Login' : 'Register'}</h2>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Username:
+          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
+        </label>
+        <label>
+          Password:
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </label>
+        <button type="submit">{isLogin ? 'Login' : 'Register'}</button>
+        <button type="button" onClick={() => setIsLogin(!isLogin)}>
+          {isLogin ? 'Register instead' : 'Login instead'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export default UserAuth;
+import React from 'react';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import Home from './pages/Home';
+import Events from './pages/Events';
+import Profile from './pages/Profile';
+import UserAuth from './components/UserAuth';
+
+function App() {
+  return (
+    <Router>
+      <div className="App">
+        <header>
+          {/* Add navigation menu */}
+        </header>
+        <Switch>
+          <Route exact path="/" component={Home} />
+          <Route path="/events" component={Events} />
+          <Route path="/profile" component={Profile} />
+          <Route path="/login" component={UserAuth} />
+        </Switch>
+        <footer>
+          {/* Add footer content */}
+        </footer>
+      </div>
+    </Router>
+  );
+}
+
+export default App;
